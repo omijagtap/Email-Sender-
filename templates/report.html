@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Campaign Report - UpGrad Email Sender{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2 mb-1">
+                        <i class="fas fa-chart-bar text-primary me-2"></i>Campaign Report
+                    </h1>
+                    <p class="text-muted mb-0">{{ campaign.subject }}</p>
+                </div>
+                <div>
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                        <i class="fas fa-home me-2"></i>Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campaign Summary -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-envelope fa-2x text-primary mb-3"></i>
+                    <h3 class="mb-1">{{ summary.total }}</h3>
+                    <p class="text-muted mb-0">Total Recipients</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-check-circle fa-2x text-success mb-3"></i>
+                    <h3 class="mb-1 text-success">{{ summary.sent }}</h3>
+                    <p class="text-muted mb-0">Successfully Sent</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-exclamation-triangle fa-2x text-danger mb-3"></i>
+                    <h3 class="mb-1 text-danger">{{ summary.failed }}</h3>
+                    <p class="text-muted mb-0">Failed to Send</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="card text-center h-100">
+                <div class="card-body">
+                    <i class="fas fa-percentage fa-2x text-info mb-3"></i>
+                    <h3 class="mb-1 text-info">
+                        {{ ((summary.sent / summary.total * 100) | round(1)) if summary.total > 0 else 0 }}%
+                    </h3>
+                    <p class="text-muted mb-0">Success Rate</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Campaign Details -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Campaign Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Subject</h6>
+                            <p>{{ campaign.subject }}</p>
+                        </div>
+                        <div class="col-md-2">
+                            <h6 class="text-muted">Mode</h6>
+                            <span class="badge {{ 'bg-primary' if campaign.mode == 'personalized' else 'bg-secondary' }}">
+                                {{ 'Personalized' if campaign.mode == 'personalized' else 'Bulk BCC' }}
+                            </span>
+                        </div>
+                        <div class="col-md-3">
+                            <h6 class="text-muted">Created</h6>
+                            <p>{{ campaign.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                        </div>
+                        <div class="col-md-3">
+                            <h6 class="text-muted">Completed</h6>
+                            <p>{{ campaign.completed_at.strftime('%Y-%m-%d %H:%M:%S') if campaign.completed_at else 'N/A' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Failure Analysis -->
+    {% if summary.failed > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <h6 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delivery Issues Detected
+                </h6>
+                <p class="mb-0">
+                    {{ summary.failed }} emails failed to send. Common reasons include invalid email addresses, 
+                    server issues, or rate limiting. Check the detailed logs below for specific error messages.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Detailed Logs -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Detailed Email Logs
+                    </h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="filterLogs('all')">All</button>
+                        <button class="btn btn-sm btn-outline-success" onclick="filterLogs('sent')">Sent Only</button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="filterLogs('failed')">Failed Only</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if logs %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Email Address</th>
+                                    <th>Status</th>
+                                    <th>Timestamp</th>
+                                    <th>Error Message</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logsTableBody">
+                                {% for log in logs %}
+                                <tr class="log-row" data-status="{{ log.status }}">
+                                    <td>
+                                        <i class="fas fa-envelope me-2 text-muted"></i>
+                                        {{ log.recipient_email }}
+                                    </td>
+                                    <td>
+                                        {% if log.status == 'sent' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>Sent
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times me-1"></i>Failed
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ log.sent_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if log.error_message %}
+                                            <small class="text-danger">{{ log.error_message }}</small>
+                                        {% else %}
+                                            <small class="text-muted">—</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No logs available</h5>
+                        <p class="text-muted">Email logs will appear here once the campaign starts sending.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Report -->
+    {% if logs %}
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <button class="btn btn-outline-primary" onclick="downloadReport()">
+                <i class="fas fa-download me-2"></i>Download Report as CSV
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterLogs(status) {
+    const rows = document.querySelectorAll('.log-row');
+    
+    rows.forEach(row => {
+        if (status === 'all' || row.dataset.status === status) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // Update button states
+    document.querySelectorAll('.btn-outline-primary, .btn-outline-success, .btn-outline-danger').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    if (status === 'all') {
+        document.querySelector('.btn-outline-primary').classList.add('active');
+    } else if (status === 'sent') {
+        document.querySelector('.btn-outline-success').classList.add('active');
+    } else if (status === 'failed') {
+        document.querySelector('.btn-outline-danger').classList.add('active');
+    }
+}
+
+function downloadReport() {
+    // Create CSV content
+    let csvContent = "Email Address,Status,Timestamp,Error Message\n";
+    
+    const rows = document.querySelectorAll('.log-row');
+    rows.forEach(row => {
+        const email = row.children[0].textContent.trim();
+        const status = row.dataset.status;
+        const timestamp = row.children[2].textContent.trim();
+        const error = row.children[3].textContent.trim();
+        
+        csvContent += `"${email}","${status}","${timestamp}","${error}"\n`;
+    });
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `campaign_report_{{ campaign.id }}_{{ campaign.created_at.strftime('%Y%m%d') }}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+
+// Initialize with all logs visible
+filterLogs('all');
+</script>
+{% endblock %}

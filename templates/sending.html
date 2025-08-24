@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Sending Campaign - UpGrad Email Sender{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="h2 mb-3">
+                    <i class="fas fa-paper-plane text-primary me-2"></i>Campaign in Progress
+                </h1>
+                <p class="text-muted">Your email campaign is being sent. Please wait...</p>
+            </div>
+
+            <!-- Campaign Info -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Campaign Subject</h6>
+                            <p class="mb-0 fw-bold">{{ campaign.subject }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Mode</h6>
+                            <span class="badge {{ 'bg-primary' if campaign.mode == 'personalized' else 'bg-secondary' }}">
+                                {{ 'Personalized' if campaign.mode == 'personalized' else 'Bulk BCC' }}
+                            </span>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-muted">Total Recipients</h6>
+                            <p class="mb-0 fw-bold" id="totalEmails">{{ campaign.total_emails or 0 }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <div class="spinner-border text-primary mb-3" role="status" id="loadingSpinner">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h5 id="statusText">Initializing campaign...</h5>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Progress</span>
+                            <span id="progressText">0%</span>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="progressBar" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h3 class="text-success mb-1" id="sentCount">0</h3>
+                                <small class="text-muted">Sent</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h3 class="text-danger mb-1" id="failedCount">0</h3>
+                                <small class="text-muted">Failed</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h3 class="text-muted mb-1" id="remainingCount">0</h3>
+                            <small class="text-muted">Remaining</small>
+                        </div>
+                    </div>
+
+                    <!-- Completion Message -->
+                    <div id="completionMessage" class="alert d-none mt-4"></div>
+
+                    <!-- Action Button -->
+                    <div class="text-center mt-4">
+                        <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('index') }}'" 
+                                id="dashboardBtn" style="display: none;">
+                            <i class="fas fa-home me-2"></i>Back to Dashboard
+                        </button>
+                        <button class="btn btn-success" id="viewReportBtn" style="display: none;"
+                                onclick="window.location.href='{{ url_for('view_report', campaign_id=campaign.id) }}'">
+                            <i class="fas fa-chart-bar me-2"></i>View Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Important Note -->
+            <div class="alert alert-info mt-4">
+                <h6 class="alert-heading">
+                    <i class="fas fa-info-circle me-2"></i>Please Note
+                </h6>
+                <ul class="mb-0">
+                    <li>Please keep this page open until the campaign completes</li>
+                    <li>Emails are sent with a delay to respect rate limits</li>
+                    <li>You will receive a detailed report once the campaign is finished</li>
+                    <li>If you close this page, the campaign will continue in the background</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let campaignId = {{ campaign.id }};
+let isCompleted = false;
+
+function updateProgress() {
+    if (isCompleted) return;
+    
+    fetch(`{{ url_for('campaign_status', campaign_id=campaign.id) }}`)
+        .then(response => response.json())
+        .then(data => {
+            // Update progress bar
+            const progress = Math.round(data.progress);
+            document.getElementById('progressBar').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '%';
+            
+            // Update counts
+            document.getElementById('totalEmails').textContent = data.total_emails;
+            document.getElementById('sentCount').textContent = data.sent_emails;
+            document.getElementById('failedCount').textContent = data.failed_emails;
+            document.getElementById('remainingCount').textContent = 
+                data.total_emails - data.sent_emails - data.failed_emails;
+            
+            // Update status text
+            const statusText = document.getElementById('statusText');
+            const spinner = document.getElementById('loadingSpinner');
+            const completionMessage = document.getElementById('completionMessage');
+            const dashboardBtn = document.getElementById('dashboardBtn');
+            const viewReportBtn = document.getElementById('viewReportBtn');
+            
+            if (data.status === 'sending') {
+                statusText.textContent = `Sending emails... (${data.sent_emails + data.failed_emails} of ${data.total_emails})`;
+            } else if (data.status === 'completed') {
+                isCompleted = true;
+                spinner.style.display = 'none';
+                statusText.textContent = 'Campaign completed successfully!';
+                
+                completionMessage.className = 'alert alert-success mt-4';
+                completionMessage.innerHTML = `
+                    <h6 class="alert-heading"><i class="fas fa-check-circle me-2"></i>Campaign Completed</h6>
+                    <p class="mb-0">Your email campaign has been completed successfully. 
+                    ${data.sent_emails} emails were sent successfully.
+                    ${data.failed_emails > 0 ? ` ${data.failed_emails} emails failed to send.` : ''}</p>
+                `;
+                completionMessage.classList.remove('d-none');
+                
+                document.getElementById('progressBar').classList.remove('progress-bar-animated');
+                dashboardBtn.style.display = 'inline-block';
+                viewReportBtn.style.display = 'inline-block';
+                
+            } else if (data.status === 'failed') {
+                isCompleted = true;
+                spinner.style.display = 'none';
+                statusText.textContent = 'Campaign failed';
+                
+                completionMessage.className = 'alert alert-danger mt-4';
+                completionMessage.innerHTML = `
+                    <h6 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>Campaign Failed</h6>
+                    <p class="mb-0">Unfortunately, your email campaign failed to complete. Please check the report for details.</p>
+                `;
+                completionMessage.classList.remove('d-none');
+                
+                document.getElementById('progressBar').classList.remove('progress-bar-animated');
+                document.getElementById('progressBar').classList.add('bg-danger');
+                dashboardBtn.style.display = 'inline-block';
+                viewReportBtn.style.display = 'inline-block';
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching campaign status:', error);
+        });
+}
+
+// Update progress every 2 seconds
+updateProgress(); // Initial call
+const progressInterval = setInterval(() => {
+    if (isCompleted) {
+        clearInterval(progressInterval);
+    } else {
+        updateProgress();
+    }
+}, 2000);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - UpGrad Email Sender{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h2 mb-1">
+                        <i class="fas fa-tachometer-alt text-primary me-2"></i>Dashboard
+                    </h1>
+                    <p class="text-muted mb-0">
+                        Welcome back, {% if current_user.first_name %}{{ current_user.first_name }}{% else %}{{ current_user.email }}{% endif %}
+                    </p>
+                </div>
+                <div>
+                    <a href="{{ url_for('new_campaign') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>New Campaign
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Total Campaigns</h5>
+                            <h2 class="mb-0">{{ campaigns|length }}</h2>
+                        </div>
+                        <i class="fas fa-envelope fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Emails Sent</h5>
+                            <h2 class="mb-0">{{ campaigns|sum(attribute='sent_emails') or 0 }}</h2>
+                        </div>
+                        <i class="fas fa-paper-plane fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Failed Emails</h5>
+                            <h2 class="mb-0">{{ campaigns|sum(attribute='failed_emails') or 0 }}</h2>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Completed</h5>
+                            <h2 class="mb-0">{{ campaigns|selectattr('status', 'equalto', 'completed')|list|length }}</h2>
+                        </div>
+                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Campaigns -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2"></i>
+                        {% if show_all %}All Campaigns{% else %}Recent Campaigns{% endif %}
+                    </h5>
+                    {% if not show_all and campaigns|length > 5 %}
+                    <a href="{{ url_for('list_campaigns') }}" class="btn btn-outline-primary btn-sm">
+                        View All
+                    </a>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body">
+                    {% if campaigns %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Mode</th>
+                                    <th>Status</th>
+                                    <th>Emails</th>
+                                    <th>Created</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for campaign in campaigns %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ campaign.subject }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ 'bg-primary' if campaign.mode == 'personalized' else 'bg-secondary' }}">
+                                            {{ 'Personalized' if campaign.mode == 'personalized' else 'Bulk BCC' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if campaign.status == 'draft' %}
+                                            <span class="badge bg-secondary">Draft</span>
+                                        {% elif campaign.status == 'sending' %}
+                                            <span class="badge bg-warning">Sending</span>
+                                        {% elif campaign.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif campaign.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if campaign.total_emails > 0 %}
+                                            <div class="d-flex align-items-center">
+                                                <span class="text-success me-1">{{ campaign.sent_emails }}</span>
+                                                {% if campaign.failed_emails > 0 %}
+                                                / <span class="text-danger ms-1">{{ campaign.failed_emails }} failed</span>
+                                                {% endif %}
+                                                <span class="text-muted ms-1">of {{ campaign.total_emails }}</span>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">
+                                            {{ campaign.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {% if campaign.status == 'draft' %}
+                                            <a href="{{ url_for('preview_campaign', campaign_id=campaign.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye me-1"></i>Preview
+                                            </a>
+                                        {% elif campaign.status == 'sending' %}
+                                            <a href="{{ url_for('sending_progress', campaign_id=campaign.id) }}" 
+                                               class="btn btn-sm btn-outline-warning">
+                                                <i class="fas fa-spinner me-1"></i>Progress
+                                            </a>
+                                        {% elif campaign.status in ['completed', 'failed'] %}
+                                            <a href="{{ url_for('view_report', campaign_id=campaign.id) }}" 
+                                               class="btn btn-sm btn-outline-success">
+                                                <i class="fas fa-chart-bar me-1"></i>Report
+                                            </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-envelope-open text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="mt-3 text-muted">No campaigns yet</h5>
+                        <p class="text-muted">Create your first email campaign to get started</p>
+                        <a href="{{ url_for('new_campaign') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Create Campaign
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

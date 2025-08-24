@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}New Campaign - UpGrad Email Sender{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- Header -->
+            <div class="text-center mb-5">
+                <h1 class="h2 mb-3">
+                    <i class="fas fa-plus-circle text-primary me-2"></i>Create New Email Campaign
+                </h1>
+                <p class="text-muted">Upload your email template and recipient data to get started</p>
+            </div>
+
+            <!-- Campaign Form -->
+            <div class="card">
+                <div class="card-body">
+                    <form action="{{ url_for('upload_files') }}" method="post" enctype="multipart/form-data" id="campaignForm">
+                        <!-- Email Subject -->
+                        <div class="mb-4">
+                            <label for="subject" class="form-label">
+                                <i class="fas fa-heading me-2"></i>Email Subject Line
+                            </label>
+                            <input type="text" class="form-control" id="subject" name="subject" 
+                                   placeholder="Enter your email subject" required>
+                            <div class="form-text">This will be the subject line for all emails in this campaign</div>
+                        </div>
+
+                        <!-- Email Mode -->
+                        <div class="mb-4">
+                            <label class="form-label">
+                                <i class="fas fa-cogs me-2"></i>Email Mode
+                            </label>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card border-primary">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="mode" 
+                                                       id="mode_personalized" value="personalized" checked>
+                                                <label class="form-check-label" for="mode_personalized">
+                                                    <strong>Personalized Emails</strong>
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">
+                                                Send customized emails with placeholders like &lt;Name&gt;, &lt;Course&gt;
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="mode" 
+                                                       id="mode_bulk" value="bulk">
+                                                <label class="form-check-label" for="mode_bulk">
+                                                    <strong>Bulk BCC</strong>
+                                                </label>
+                                            </div>
+                                            <small class="text-muted">
+                                                Send the same message to all recipients (no placeholders)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Template File -->
+                        <div class="mb-4">
+                            <label for="template_file" class="form-label">
+                                <i class="fas fa-file-alt me-2"></i>Email Template File
+                            </label>
+                            <input type="file" class="form-control" id="template_file" name="template_file" 
+                                   accept=".txt" required>
+                            <div class="form-text">
+                                Upload a .txt file containing your email template. 
+                                Use placeholders like &lt;Name&gt;, &lt;Course&gt; for personalized content.
+                            </div>
+                        </div>
+
+                        <!-- CSV File -->
+                        <div class="mb-4">
+                            <label for="csv_file" class="form-label">
+                                <i class="fas fa-table me-2"></i>Recipient Data File
+                            </label>
+                            <input type="file" class="form-control" id="csv_file" name="csv_file" 
+                                   accept=".csv" required>
+                            <div class="form-text">
+                                Upload a .csv file with recipient data. Must include an "Email" column.
+                                Additional columns should match your template placeholders.
+                            </div>
+                        </div>
+
+                        <!-- File Format Help -->
+                        <div class="alert alert-info">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-info-circle me-2"></i>File Format Guidelines
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Template File (.txt):</strong>
+                                    <ul class="mb-0 mt-2">
+                                        <li>Plain text format</li>
+                                        <li>Use &lt;Placeholder&gt; for dynamic content</li>
+                                        <li>Example: "Dear &lt;Name&gt;, your &lt;Course&gt; grade is &lt;Grade&gt;"</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>CSV File (.csv):</strong>
+                                    <ul class="mb-0 mt-2">
+                                        <li>First row should contain column headers</li>
+                                        <li>Must include "Email" column</li>
+                                        <li>Additional columns for template placeholders</li>
+                                        <li>Example: Email, Name, Course, Grade</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="fas fa-upload me-2"></i>Upload & Continue
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Sample Files -->
+            <div class="mt-4">
+                <div class="card border-light">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0">
+                            <i class="fas fa-download me-2"></i>Sample Files
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Sample Template (template.txt):</h6>
+                                <pre class="bg-light p-3 rounded small">Dear &lt;Name&gt;,
+
+Your course &lt;Course&gt; has been updated.
+Grade: &lt;Grade&gt;
+
+Best regards,
+UpGrad Team</pre>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Sample CSV (learners.csv):</h6>
+                                <pre class="bg-light p-3 rounded small">Email,Name,Course,Grade
+john@example.com,John Doe,Data Science,A
+jane@example.com,Jane Smith,AI/ML,B+
+bob@example.com,Bob Johnson,Web Dev,A-</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('campaignForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
+});
+
+// Mode selection highlighting
+document.querySelectorAll('input[name="mode"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.querySelectorAll('.card').forEach(card => {
+            card.classList.remove('border-primary');
+        });
+        
+        if (this.checked) {
+            this.closest('.card').classList.add('border-primary');
+        }
+    });
+});
+</script>
+{% endblock %}

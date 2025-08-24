@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}Campaign Completed - UpGrad Email Sender{% endblock %}
+
+{% block head %}
+<style>
+.completion-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+}
+
+.completion-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    padding: 48px;
+    text-align: center;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 100%;
+    animation: slideInUp 0.8s ease;
+}
+
+.success-icon {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 32px;
+    font-size: 48px;
+    color: white;
+    animation: bounceIn 1s ease 0.3s both;
+    box-shadow: 0 10px 30px rgba(74, 222, 128, 0.4);
+}
+
+.completion-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 16px;
+    animation: fadeInUp 0.6s ease 0.6s both;
+}
+
+.completion-subtitle {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 40px;
+    animation: fadeInUp 0.6s ease 0.8s both;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 24px 16px;
+    animation: fadeInUp 0.6s ease both;
+}
+
+.stat-card:nth-child(1) { animation-delay: 1s; }
+.stat-card:nth-child(2) { animation-delay: 1.2s; }
+.stat-card:nth-child(3) { animation-delay: 1.4s; }
+
+.stat-icon {
+    font-size: 24px;
+    margin-bottom: 12px;
+}
+
+.total-stat .stat-icon { color: #60a5fa; }
+.success-stat .stat-icon { color: #4ade80; }
+.failed-stat .stat-icon { color: #f87171; }
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.total-stat .stat-number { color: #60a5fa; }
+.success-stat .stat-number { color: #4ade80; }
+.failed-stat .stat-number { color: #f87171; }
+
+.stat-label {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.success-rate-card {
+    background: rgba(74, 222, 128, 0.2);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 32px;
+    animation: fadeInUp 0.6s ease 1.6s both;
+}
+
+.success-rate-title {
+    color: #4ade80;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.success-rate-bar {
+    background: rgba(255, 255, 255, 0.2);
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.success-rate-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    border-radius: 6px;
+    width: {{ result.success_rate }}%;
+    animation: fillBar 2s ease 1.8s both;
+}
+
+.success-rate-text {
+    color: white;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    animation: fadeInUp 0.6s ease 2s both;
+}
+
+.btn-primary, .btn-secondary {
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:hover, .btn-secondary:hover {
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: white;
+}
+
+.btn-primary:hover {
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+}
+
+.redirect-notice {
+    margin-top: 24px;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    animation: fadeInUp 0.6s ease 2.2s both;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes bounceIn {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fillBar {
+    from {
+        width: 0%;
+    }
+    to {
+        width: {{ result.success_rate }}%;
+    }
+}
+
+@media (max-width: 768px) {
+    .completion-card {
+        padding: 32px 24px;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="completion-container">
+    <div class="completion-card">
+        <div class="success-icon">
+            <i class="fas fa-check"></i>
+        </div>
+        
+        <h1 class="completion-title">Campaign Completed!</h1>
+        <p class="completion-subtitle">Your email campaign has been processed successfully</p>
+        
+        <div class="stats-grid">
+            <div class="stat-card total-stat">
+                <div class="stat-icon">
+                    <i class="fas fa-envelope"></i>
+                </div>
+                <div class="stat-number">{{ result.total_recipients }}</div>
+                <div class="stat-label">Total Recipients</div>
+            </div>
+            
+            <div class="stat-card success-stat">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-number">{{ result.sent_successfully }}</div>
+                <div class="stat-label">Successfully Sent</div>
+            </div>
+            
+            <div class="stat-card failed-stat">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-number">{{ result.failed_to_send }}</div>
+                <div class="stat-label">Failed to Send</div>
+            </div>
+        </div>
+        
+        <div class="success-rate-card">
+            <div class="success-rate-title">Success Rate</div>
+            <div class="success-rate-bar">
+                <div class="success-rate-fill"></div>
+            </div>
+            <div class="success-rate-text">{{ "%.1f"|format(result.success_rate) }}% of {{ result.total_recipients }} emails were sent successfully</div>
+        </div>
+        
+        <div class="action-buttons">
+            <a href="{{ url_for('index') }}" class="btn-primary">
+                <i class="fas fa-plus"></i>Send Another Campaign
+            </a>
+            <a href="{{ url_for('history') }}" class="btn-secondary">
+                <i class="fas fa-history"></i>View History
+            </a>
+        </div>
+        
+        <div class="redirect-notice">
+            <i class="fas fa-info-circle me-1"></i>
+            You will be redirected to the dashboard in <span id="countdown">5</span> seconds
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto redirect after 5 seconds
+let countdown = 5;
+const countdownEl = document.getElementById('countdown');
+
+const timer = setInterval(() => {
+    countdown--;
+    countdownEl.textContent = countdown;
+    
+    if (countdown <= 0) {
+        clearInterval(timer);
+        window.location.href = "{{ url_for('index') }}";
+    }
+}, 1000);
+</script>
+{% endblock %}

@@ -1,0 +1,931 @@
+{% extends "base.html" %}
+
+{% block title %}Email Sender Dashboard - UpGrad{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Header Section -->
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">Email Sender Dashboard</h1>
+        <p class="lead text-muted">Send personalized or bulk emails with ease. Upload your data and templates,<br>validate, preview, and track delivery status in real-time.</p>
+    </div>
+
+    <form id="emailForm" enctype="multipart/form-data">
+        <!-- Select Mode Section -->
+        <div class="section-card mb-4">
+            <div class="section-header">
+                <i class="fas fa-cogs me-2"></i>Select Mode
+            </div>
+            <div class="mode-selection">
+                <div class="mode-option active" data-mode="personalized">
+                    <div class="mode-icon">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="mode-content">
+                        <h6>Personalized</h6>
+                        <small>Replace placeholders with CSV data</small>
+                    </div>
+                    <input type="radio" name="mode" value="personalized" checked hidden>
+                </div>
+                <div class="mode-option" data-mode="bulk">
+                    <div class="mode-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="mode-content">
+                        <h6>Bulk BCC</h6>
+                        <small>Same email to all recipients</small>
+                    </div>
+                    <input type="radio" name="mode" value="bulk" hidden>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Subject Section -->
+        <div class="section-card mb-4">
+            <div class="section-header">Email Subject</div>
+            <input type="text" class="modern-input" id="subject" name="subject" 
+                   placeholder="Enter your email subject line..." required>
+        </div>
+
+        <!-- Upload Files Section -->
+        <div class="section-card mb-4">
+            <div class="section-header">
+                <i class="fas fa-upload me-2"></i>Upload Files
+            </div>
+            <div class="upload-grid">
+                <div class="upload-box drag-area" id="csvUpload">
+                    <div class="upload-icon">
+                        <i class="fas fa-table"></i>
+                    </div>
+                    <h6>CSV File</h6>
+                    <p>Drag & drop or click to upload your email list</p>
+                    <input type="file" id="csv_file" name="csv_file" accept=".csv" hidden>
+                    <div class="file-info" id="csvInfo"></div>
+                    <div class="upload-status" id="csvStatus"></div>
+                </div>
+                <div class="upload-box drag-area" id="templateUpload">
+                    <div class="upload-icon template-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h6>Template File</h6>
+                    <p>Drag & drop or click to upload email template</p>
+                    <input type="file" id="template_file" name="template_file" accept=".txt,.html" hidden>
+                    <div class="file-info" id="templateInfo"></div>
+                    <textarea class="modern-input mt-3" id="template" name="template" rows="4" 
+                              placeholder="Or type your template here..."></textarea>
+                    <div class="upload-status" id="templateStatus"></div>
+                    
+                    <!-- Show detected placeholders -->
+                    <div id="placeholdersDetected" class="placeholders-display">
+                        <div class="preview-label">Placeholders Detected:</div>
+                        <div id="detectedPlaceholdersList"></div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Found <span id="placeholderCount">0</span> placeholders in template
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Actions Row -->
+        <div class="row g-4">
+            <!-- Test Email Section -->
+            <div class="col-lg-6">
+                <div class="action-card">
+                    <h6 class="action-title">Test Email</h6>
+                    <p class="action-subtitle">Send preview to:</p>
+                    <input type="email" class="modern-input mb-3" id="testEmail" 
+                           placeholder="test@example.com" value="{{ session.get('sender_email', '') }}">
+                    <button type="button" class="btn-test" id="sendTestBtn">
+                        <i class="fas fa-paper-plane me-2"></i>Send Test Email
+                    </button>
+                    <div id="testResult" class="mt-3"></div>
+                </div>
+            </div>
+
+            <!-- Actions Section -->
+            <div class="col-lg-6">
+                <div class="action-card">
+                    <h6 class="action-title">Actions</h6>
+                    <button type="button" class="btn-preview" id="previewBtn">
+                        <i class="fas fa-eye me-2"></i>Preview Email
+                    </button>
+                    <button type="button" class="btn-send" id="sendBtn" disabled>
+                        <i class="fas fa-rocket me-2"></i>Send <span id="emailCount">0</span> Emails
+                    </button>
+                    <a href="{{ url_for('history') }}" class="btn-preview mt-2" style="display: inline-block; text-decoration: none;">
+                        <i class="fas fa-history me-2"></i>View History
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Email Preview Section -->
+        <div class="section-card mt-4" id="previewSection" style="display: none;">
+            <div class="section-header">
+                <i class="fas fa-eye me-2"></i>Email Preview
+                <span id="emailCounter" class="email-counter" style="display: none;">
+                    <i class="fas fa-envelope me-1"></i>
+                    <span id="emailCount">0</span> emails ready
+                </span>
+            </div>
+            
+            <!-- Placeholders found -->
+            <div id="placeholdersFound" class="placeholders-display">
+                <div class="preview-label">Placeholders Found:</div>
+                <div id="placeholdersList"></div>
+            </div>
+            
+            <div class="preview-content">
+                <div class="email-preview-header">
+                    <div class="preview-label">Subject</div>
+                    <div class="preview-value" id="previewSubject">No subject entered</div>
+                </div>
+                
+                <div class="preview-label">Email Body</div>
+                <div class="preview-value" id="previewBody" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 14px; line-height: 1.6;">
+                    Preview will appear here after uploading files and clicking Preview Email
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.section-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.section-header {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+
+.mode-selection {
+    display: flex;
+    gap: 20px;
+}
+
+.mode-option {
+    flex: 1;
+    padding: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.mode-option:hover {
+    border-color: rgba(102, 126, 234, 0.5);
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.mode-option.active {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+.mode-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+}
+
+.mode-content h6 {
+    margin: 0;
+    color: white;
+    font-weight: 600;
+}
+
+.mode-content small {
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0;
+}
+
+.modern-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 10px;
+    color: white;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.modern-input:focus {
+    outline: none;
+    border-color: #667eea;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+}
+
+.modern-input::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.upload-box {
+    text-align: center;
+    padding: 30px 20px;
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.upload-box:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.drag-area.dragover {
+    border-color: #4ade80 !important;
+    background: rgba(74, 222, 128, 0.2) !important;
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+.upload-status {
+    margin-top: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    display: none;
+}
+
+.status-success {
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.status-error {
+    background: rgba(248, 113, 113, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(248, 113, 113, 0.3);
+}
+
+.email-counter {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-left: 10px;
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.placeholders-display {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-radius: 8px;
+    display: none;
+}
+
+.placeholder-tag {
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    margin: 2px;
+    font-weight: 500;
+}
+
+.preview-content {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 12px;
+}
+
+.email-preview-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+}
+
+.preview-label {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+.preview-value {
+    color: white;
+    font-weight: 600;
+    word-break: break-word;
+}
+
+.upload-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 16px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #4facfe, #00f2fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+}
+
+.template-icon {
+    background: linear-gradient(135deg, #fa709a, #fee140);
+}
+
+.upload-box h6 {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.upload-box p {
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.upload-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.upload-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #667eea;
+}
+
+.file-info {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 255, 0, 0.1);
+    border: 1px solid rgba(0, 255, 0, 0.3);
+    border-radius: 6px;
+    color: #4ade80;
+    font-size: 13px;
+    display: none;
+}
+
+.action-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 24px;
+    height: 100%;
+}
+
+.action-title {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.action-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.btn-test {
+    width: 100%;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-test:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.4);
+}
+
+.btn-preview {
+    width: 100%;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 12px;
+}
+
+.btn-preview:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #667eea;
+}
+
+.btn-send {
+    width: 100%;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-send:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.btn-send:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.preview-content {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.preview-field label {
+    color: white;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.preview-box {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 16px;
+    color: rgba(255, 255, 255, 0.9);
+    min-height: 60px;
+    white-space: pre-wrap;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .upload-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .mode-selection {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let formData = new FormData();
+let csvData = [];
+let templateData = '';
+let emailCount = 0;
+let placeholders = [];
+let csvHeaders = [];
+
+// Mode selection
+document.querySelectorAll('.mode-option').forEach(option => {
+    option.addEventListener('click', function() {
+        document.querySelectorAll('.mode-option').forEach(o => o.classList.remove('active'));
+        this.classList.add('active');
+        this.querySelector('input[type="radio"]').checked = true;
+        updateEmailCount();
+    });
+});
+
+// Drag and drop functionality
+function setupDragAndDrop(uploadArea, fileInput, onFileSelect) {
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'), false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'), false);
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            onFileSelect(files[0]);
+        }
+    });
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+}
+
+// Extract placeholders from template
+function extractPlaceholders(text) {
+    const regex = /<([^<>]+)>/g;
+    const found = [];
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        if (!found.includes(match[1])) {
+            found.push(match[1]);
+        }
+    }
+    return found;
+}
+
+// Update placeholders display
+function updatePlaceholderDisplay() {
+    const placeholdersList = document.getElementById('placeholdersList');
+    const placeholdersDiv = document.getElementById('placeholdersFound');
+    
+    if (placeholders.length > 0) {
+        placeholdersList.innerHTML = placeholders.map(ph => 
+            `<span class="placeholder-tag">&lt;${ph}&gt;</span>`
+        ).join('');
+        placeholdersDiv.style.display = 'block';
+    } else {
+        placeholdersDiv.style.display = 'none';
+    }
+}
+
+// Setup drag and drop for CSV
+const csvUploadArea = document.getElementById('csvUpload');
+const csvFileInput = document.getElementById('csv_file');
+setupDragAndDrop(csvUploadArea, csvFileInput, handleCSVFile);
+
+// Setup drag and drop for template
+const templateUploadArea = document.getElementById('templateUpload');
+const templateFileInput = document.getElementById('template_file');
+setupDragAndDrop(templateUploadArea, templateFileInput, handleTemplateFile);
+
+// File uploads
+document.getElementById('csv_file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) handleCSVFile(file);
+});
+
+document.getElementById('template_file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) handleTemplateFile(file);
+});
+
+function handleCSVFile(file) {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        showUploadStatus('csvStatus', '❌ Please upload a CSV file', 'error');
+        return;
+    }
+    
+    document.getElementById('csvInfo').style.display = 'block';
+    document.getElementById('csvInfo').textContent = `✓ ${file.name} selected`;
+    formData.set('csv_file', file);
+    
+    // Parse CSV to count emails and headers
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const text = e.target.result;
+            const lines = text.split('\n').filter(line => line.trim());
+            if (lines.length > 1) {
+                csvHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+                csvData = lines.map(line => line.split(',').map(cell => cell.trim().replace(/"/g, '')));
+                emailCount = lines.length - 1; // Subtract header
+                
+                if (!csvHeaders.includes('Email')) {
+                    showUploadStatus('csvStatus', '⚠️ CSV must have "Email" column', 'error');
+                    return;
+                }
+                
+                showUploadStatus('csvStatus', `✅ ${emailCount} emails found`, 'success');
+                updateEmailCount();
+                
+                // Also update the send button immediately
+                const sendBtn = document.getElementById('sendBtn');
+                const emailCountSpan = sendBtn.querySelector('span');
+                if (emailCountSpan) {
+                    emailCountSpan.textContent = emailCount;
+                }
+            }
+        } catch (error) {
+            showUploadStatus('csvStatus', '❌ Error reading CSV file', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function handleTemplateFile(file) {
+    if (!file.name.toLowerCase().match(/\.(txt|html)$/)) {
+        showUploadStatus('templateStatus', '❌ Please upload a TXT or HTML file', 'error');
+        return;
+    }
+    
+    document.getElementById('templateInfo').style.display = 'block';
+    document.getElementById('templateInfo').textContent = `✓ ${file.name} selected`;
+    formData.set('template_file', file);
+    
+    // Read template content
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        templateData = e.target.result;
+        document.getElementById('template').value = templateData;
+        document.getElementById('template').style.display = 'block';
+        
+        // Extract placeholders
+        placeholders = extractPlaceholders(templateData);
+        updatePlaceholderDisplay();
+        updateDetectedPlaceholders();
+        
+        showUploadStatus('templateStatus', `✅ Template loaded (${placeholders.length} placeholders)`, 'success');
+    };
+    reader.readAsText(file);
+}
+
+function showUploadStatus(elementId, message, type) {
+    const statusEl = document.getElementById(elementId);
+    statusEl.textContent = message;
+    statusEl.className = `upload-status status-${type}`;
+    statusEl.style.display = 'block';
+}
+
+document.getElementById('template').addEventListener('input', function() {
+    templateData = this.value;
+    placeholders = extractPlaceholders(templateData);
+    updatePlaceholderDisplay();
+    updateDetectedPlaceholders();
+    updateEmailCount(); // Check if send button should be enabled
+});
+
+// Also check when subject changes
+document.getElementById('subject').addEventListener('input', function() {
+    updateEmailCount(); // Check if send button should be enabled
+});
+
+// Update detected placeholders display
+function updateDetectedPlaceholders() {
+    const detectedDiv = document.getElementById('placeholdersDetected');
+    const listDiv = document.getElementById('detectedPlaceholdersList');
+    const countSpan = document.getElementById('placeholderCount');
+    
+    if (placeholders.length > 0) {
+        listDiv.innerHTML = placeholders.map(ph => 
+            `<span class="placeholder-tag">&lt;${ph}&gt;</span>`
+        ).join('');
+        countSpan.textContent = placeholders.length;
+        detectedDiv.style.display = 'block';
+    } else {
+        detectedDiv.style.display = 'none';
+        countSpan.textContent = '0';
+    }
+}
+
+function updateEmailCount() {
+    const countSpan = document.getElementById('emailCount');
+    const counterDiv = document.getElementById('emailCounter');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    // Update both email count displays
+    const emailCountSpan2 = document.querySelector('#sendBtn span');
+    if (emailCountSpan2) {
+        emailCountSpan2.textContent = emailCount;
+    }
+    
+    // Update display in preview section
+    if (emailCount > 0) {
+        countSpan.textContent = emailCount;
+        counterDiv.style.display = 'inline-flex';
+    } else {
+        counterDiv.style.display = 'none';
+    }
+    
+    // Check if all requirements are met
+    const subject = document.getElementById('subject').value.trim();
+    const template = document.getElementById('template').value.trim() || templateData;
+    const hasCSV = csvData.length > 1; // Has data rows beyond header
+    const hasTemplate = template.length > 0;
+    const hasSubject = subject.length > 0;
+    
+    // Enable send button if all conditions are met
+    const canSend = hasCSV && hasTemplate && hasSubject && emailCount > 0;
+    sendBtn.disabled = !canSend;
+    
+    // Update button appearance based on state
+    if (canSend) {
+        sendBtn.style.opacity = '1';
+        sendBtn.style.cursor = 'pointer';
+        sendBtn.style.background = 'linear-gradient(135deg, #4ade80, #22c55e)';
+    } else {
+        sendBtn.style.opacity = '0.5';
+        sendBtn.style.cursor = 'not-allowed';
+        sendBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+    }
+}
+
+// Preview functionality
+document.getElementById('previewBtn').addEventListener('click', function() {
+    const subject = document.getElementById('subject').value;
+    const template = document.getElementById('template').value || templateData;
+    
+    if (!subject || !template) {
+        alert('Please enter subject and template');
+        return;
+    }
+    
+    // Generate preview with actual first row data
+    let previewBody = template;
+    if (placeholders.length > 0 && csvData.length > 1) {
+        // Replace placeholders with actual data from first row
+        placeholders.forEach(ph => {
+            const columnIndex = csvHeaders.indexOf(ph);
+            let sampleValue = `<${ph}>`;
+            
+            if (columnIndex !== -1 && csvData[1] && csvData[1][columnIndex]) {
+                sampleValue = csvData[1][columnIndex];
+            } else if (csvHeaders.includes(ph)) {
+                sampleValue = `[${ph} - no data]`;
+            }
+            
+            previewBody = previewBody.replace(new RegExp(`<${ph}>`, 'g'), sampleValue);
+        });
+    }
+    
+    document.getElementById('previewSubject').textContent = subject;
+    document.getElementById('previewBody').textContent = previewBody;
+    document.getElementById('previewSection').style.display = 'block';
+    document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth' });
+});
+
+// Test email functionality
+document.getElementById('sendTestBtn').addEventListener('click', function() {
+    const testEmail = document.getElementById('testEmail').value;
+    const subject = document.getElementById('subject').value;
+    const template = document.getElementById('template').value || templateData;
+    
+    if (!testEmail || !subject || !template) {
+        alert('Please fill in all fields before sending test email');
+        return;
+    }
+    
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+    
+    // Get first row data for test email
+    let firstRowData = {};
+    if (csvHeaders.length > 0 && csvData.length > 1) {
+        // Use first row data from CSV for testing (skip header row)
+        csvHeaders.forEach((header, index) => {
+            const firstDataRow = csvData[1];
+            if (firstDataRow && firstDataRow[index]) {
+                firstRowData[header] = firstDataRow[index];
+            }
+        });
+    }
+    
+    fetch('/send_test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            test_email: testEmail,
+            subject: subject,
+            template: template,
+            csv_data: firstRowData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        const resultDiv = document.getElementById('testResult');
+        if (data.success) {
+            resultDiv.innerHTML = `<div style="color: #4ade80; padding: 10px; background: rgba(74, 222, 128, 0.1); border-radius: 6px; border: 1px solid rgba(74, 222, 128, 0.3);">✓ ${data.message}</div>`;
+        } else {
+            resultDiv.innerHTML = `<div style="color: #f87171; padding: 10px; background: rgba(248, 113, 113, 0.1); border-radius: 6px; border: 1px solid rgba(248, 113, 113, 0.3);">✗ ${data.message}</div>`;
+        }
+    })
+    .catch(error => {
+        document.getElementById('testResult').innerHTML = `<div style="color: #f87171;">Error: ${error.message}</div>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Send Test Email';
+    });
+});
+
+// Send campaign
+document.getElementById('sendBtn').addEventListener('click', function() {
+    if (!confirm(`Are you sure you want to send ${emailCount} emails?`)) {
+        return;
+    }
+    
+    const formDataToSend = new FormData();
+    formDataToSend.append('subject', document.getElementById('subject').value);
+    formDataToSend.append('template', document.getElementById('template').value || templateData);
+    formDataToSend.append('mode', document.querySelector('input[name="mode"]:checked').value);
+    formDataToSend.append('csv_file', formData.get('csv_file'));
+    
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+    
+    fetch('/process_campaign', {
+        method: 'POST',
+        body: formDataToSend
+    })
+    .then(response => {
+        if (response.ok) {
+            if (response.redirected) {
+                window.location.href = response.url;
+            } else {
+                // Manually redirect to preview page
+                window.location.href = '/preview';
+            }
+        } else {
+            throw new Error('Network response was not ok');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error processing campaign. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-rocket me-2"></i>Send ' + emailCount + ' Emails';
+    });
+});
+</script>
+{% endblock %}

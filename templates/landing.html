@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - UpGrad Email Sender{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <div class="row justify-content-center min-vh-100 align-items-center">
+        <div class="col-lg-8 text-center">
+            <div class="hero-content">
+                <div class="mb-4">
+                    <i class="fas fa-envelope-open-text text-primary" style="font-size: 4rem;"></i>
+                </div>
+                
+                <h1 class="display-4 fw-bold mb-4">
+                    Welcome to UpGrad Email Sender
+                </h1>
+                
+                <p class="lead mb-5 text-muted">
+                    Professional email campaign management made simple. Send personalized emails 
+                    or bulk notifications to your learners with ease and track your results.
+                </p>
+                
+                <div class="row g-4 mb-5">
+                    <div class="col-md-4">
+                        <div class="feature-card text-center p-4">
+                            <i class="fas fa-upload text-primary mb-3" style="font-size: 2rem;"></i>
+                            <h5>Easy Upload</h5>
+                            <p class="text-muted mb-0">Upload your email template and learner data in just a few clicks</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="feature-card text-center p-4">
+                            <i class="fas fa-eye text-primary mb-3" style="font-size: 2rem;"></i>
+                            <h5>Preview & Test</h5>
+                            <p class="text-muted mb-0">Preview your emails and send test messages before launching</p>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="feature-card text-center p-4">
+                            <i class="fas fa-chart-line text-primary mb-3" style="font-size: 2rem;"></i>
+                            <h5>Track Results</h5>
+                            <p class="text-muted mb-0">Monitor your campaign progress and download detailed reports</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2 d-md-block">
+                    <a href="{{ url_for('replit_auth.login') }}" class="btn btn-primary btn-lg px-5">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login to Get Started
+                    </a>
+                </div>
+                
+                <p class="mt-4 text-muted small">
+                    Secure authentication powered by professional identity management
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Features Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <hr class="my-5">
+            <h2 class="text-center mb-5">Key Features</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-user-friends text-primary me-3" style="font-size: 1.5rem;"></i>
+                                <h5 class="card-title mb-0">Personalized Emails</h5>
+                            </div>
+                            <p class="card-text">
+                                Send customized emails with learner-specific information using template placeholders 
+                                like &lt;Name&gt;, &lt;Course&gt;, and &lt;Grade&gt;.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-paper-plane text-primary me-3" style="font-size: 1.5rem;"></i>
+                                <h5 class="card-title mb-0">Bulk Sending</h5>
+                            </div>
+                            <p class="card-text">
+                                Send the same message to multiple recipients efficiently using BCC mode 
+                                for announcements and general notifications.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-shield-alt text-primary me-3" style="font-size: 1.5rem;"></i>
+                                <h5 class="card-title mb-0">Data Validation</h5>
+                            </div>
+                            <p class="card-text">
+                                Automatic validation of email addresses and template data ensures 
+                                your campaigns reach the right recipients.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-file-download text-primary me-3" style="font-size: 1.5rem;"></i>
+                                <h5 class="card-title mb-0">Detailed Reports</h5>
+                            </div>
+                            <p class="card-text">
+                                Comprehensive campaign reports show delivery status, success rates, 
+                                and detailed logs for each recipient.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

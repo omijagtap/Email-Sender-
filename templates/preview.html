@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Campaign - UpGrad Email Sender{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Campaign Info -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <h6 class="text-muted mb-1">Subject</h6>
+                        <h5 class="mb-0">{{ campaign_data.subject }}</h5>
+                    </div>
+                    <div class="col-md-2">
+                        <h6 class="text-muted mb-1">Mode</h6>
+                        <span class="badge {{ 'bg-primary' if campaign_data.mode == 'personalized' else 'bg-secondary' }}">
+                            {{ 'Personalized' if campaign_data.mode == 'personalized' else 'Bulk BCC' }}
+                        </span>
+                    </div>
+                    <div class="col-md-3">
+                        <h6 class="text-muted mb-1">Recipients</h6>
+                        <p class="mb-0">
+                            <span class="text-success">{{ campaign_data.valid_count }} valid</span>
+                            {% if campaign_data.invalid_count > 0 %}
+                            / <span class="text-warning">{{ campaign_data.invalid_count }} invalid</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <a href="{{ url_for('index') }}" class="btn btn-outline-light">
+                            <i class="fas fa-arrow-left me-1"></i>Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template & Preview -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt me-2"></i>Original Template
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if campaign_data.placeholders %}
+                <div class="mb-3">
+                    <small class="text-muted">Placeholders found:</small>
+                    <div class="mt-2">
+                        {% for placeholder in campaign_data.placeholders %}
+                        <span class="placeholder-badge">&lt;{{ placeholder }}&gt;</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="preview-box">
+                    <pre style="white-space: pre-wrap; color: rgba(255,255,255,0.9);">{{ campaign_data.template }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-envelope me-2"></i>Email Preview
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if campaign_data.placeholders and campaign_data.sample_data %}
+                <div class="mb-3">
+                    <small class="text-muted">Using sample data:</small>
+                    <div class="mt-2">
+                        {% for placeholder in campaign_data.placeholders %}
+                        <small class="badge bg-success me-1">{{ placeholder }}: {{ campaign_data.sample_data.get(placeholder, 'N/A') }}</small>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                <div class="preview-box">
+                    <div class="border-bottom pb-2 mb-3">
+                        <strong>Subject:</strong> {{ campaign_data.subject }}
+                    </div>
+                    <pre style="white-space: pre-wrap; color: rgba(255,255,255,0.9);">{{ preview_text }}</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Test Email -->
+    <div class="col-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-paper-plane me-2"></i>Send Test Email
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-end">
+                    <div class="col-md-8">
+                        <label for="test_email" class="form-label">Test Email Address</label>
+                        <input type="email" class="form-control" id="test_email" 
+                               placeholder="Enter email for testing" 
+                               value="{{ session.get('sender_email', '') }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-outline-primary w-100" id="sendTestBtn">
+                            <i class="fas fa-paper-plane me-2"></i>Send Test
+                        </button>
+                    </div>
+                </div>
+                <div id="testResult" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Campaign -->
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-rocket me-2"></i>Launch Campaign
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h6>Ready to send {{ campaign_data.valid_count }} emails?</h6>
+                        <p class="text-muted mb-0">
+                            This will send emails to all valid recipients.
+                            {% if campaign_data.mode == 'personalized' %}
+                            Each recipient will receive a personalized email.
+                            {% else %}
+                            All recipients will receive the same message via BCC.
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <form action="{{ url_for('send_campaign') }}" method="post" 
+                              onsubmit="return confirm('Are you sure you want to send this campaign?')">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-rocket me-2"></i>Send Campaign
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('sendTestBtn').addEventListener('click', function() {
+    const testEmail = document.getElementById('test_email').value.trim();
+    const resultDiv = document.getElementById('testResult');
+    const btn = this;
+    
+    if (!testEmail) {
+        resultDiv.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Please enter a test email address</div>';
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+    
+    fetch('{{ url_for("send_test") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            test_email: testEmail
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>${data.message}
+                </div>
+            `;
+        } else {
+            resultDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>${data.message}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>Network error: ${error.message}
+            </div>
+        `;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Send Test';
+    });
+});
+</script>
+{% endblock %}

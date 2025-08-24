@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Campaign History - UpGrad Email Sender{% endblock %}
+
+{% block head %}
+<style>
+.history-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.history-card {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+}
+
+.history-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.campaign-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.campaign-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: white;
+    margin: 0;
+}
+
+.campaign-date {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+}
+
+.campaign-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.success-stat .stat-number {
+    color: #4ade80;
+}
+
+.total-stat .stat-number {
+    color: #60a5fa;
+}
+
+.failed-stat .stat-number {
+    color: #f87171;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    margin-bottom: 30px;
+}
+
+.back-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+    text-decoration: none;
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <a href="{{ url_for('index') }}" class="back-btn">
+        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+    </a>
+    
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-3">Campaign History</h1>
+        <p class="lead text-muted">Track your email campaign performance and statistics</p>
+    </div>
+
+    {% if campaigns %}
+        {% for campaign in campaigns %}
+        <div class="history-card">
+            <div class="campaign-header">
+                <h3 class="campaign-title">{{ campaign.subject }}</h3>
+                <span class="campaign-date">{{ campaign.date }}</span>
+            </div>
+            
+            <div class="campaign-stats">
+                <div class="stat-item total-stat">
+                    <div class="stat-number">{{ campaign.total_recipients }}</div>
+                    <div class="stat-label">Total Recipients</div>
+                </div>
+                <div class="stat-item success-stat">
+                    <div class="stat-number">{{ campaign.sent_successfully }}</div>
+                    <div class="stat-label">Successfully Sent</div>
+                </div>
+                <div class="stat-item failed-stat">
+                    <div class="stat-number">{{ campaign.failed_to_send }}</div>
+                    <div class="stat-label">Failed to Send</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" style="color: #fbbf24;">{{ "%.1f"|format(campaign.success_rate) }}%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="history-card">
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-history"></i>
+                </div>
+                <h4>No Campaigns Yet</h4>
+                <p>Your email campaign history will appear here once you start sending emails.</p>
+                <a href="{{ url_for('index') }}" class="back-btn mt-3">
+                    <i class="fas fa-plus me-2"></i>Create Your First Campaign
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

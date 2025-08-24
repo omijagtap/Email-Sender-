@@ -1,0 +1,334 @@
+import smtplib
+import pandas as pd
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import time
+import datetime
+import re
+import os
+import sys
+
+# ----------------- WELCOME & MODE ----------------- #
+print("🎯 Welcome to the UpGrad Email Sender!")
+print("Choose mode:")
+print("1️⃣ Personalized emails (replace <attributes> for each learner)")
+print("2️⃣ Bulk BCC (same email to all learners, no attributes)")
+
+mode = input("Enter 1 or 2: ").strip()
+if mode not in ['1', '2']:
+    print("❌ Invalid choice. Exiting.")
+    exit()
+
+if mode == '1':
+    print("✅ You selected Personalized emails.")
+else:
+    print("✅ You selected Bulk BCC emails.")
+
+# ----------------- CONFIG ----------------- #
+SMTP_SERVER = 'smtp.office365.com'
+SMTP_PORT = 587
+SENDER_EMAIL = "intlesgcidba@upgrad.com"   # Replace
+PASSWORD = "htmwlfsdhjjmxlls"              # Replace
+
+# ----------------- FUNCTIONS ----------------- #
+def extract_placeholders(template):
+    """Extract placeholders in the format <Placeholder> from template"""
+    all_phs = re.findall(r'<([^<>]+)>', template)
+    unique_phs = list(dict.fromkeys(all_phs))
+    return all_phs, unique_phs
+
+def is_valid_email(email):
+    """Validate email format"""
+    pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    return re.match(pattern, str(email)) is not None
+
+def row_missing_fields(row, placeholders):
+    """Check missing data in mandatory fields"""
+    missing = []
+    if not is_valid_email(row['Email']):
+        missing.append('Email (Invalid)')
+    for ph in placeholders:
+        if ph in row and (pd.isna(row[ph]) or str(row[ph]).strip() == ''):
+            missing.append(ph)
+    return missing
+
+# ----------------- STEP 1: Subject ----------------- #
+subject = input("Enter the email subject line: ").strip()
+if not subject:
+    print("❌ Email subject is required. Exiting.")
+    exit()
+
+# ----------------- STEP 2: Template ----------------- #
+TEMPLATE_FILE = input("Enter full path of your TXT template file: ").strip()
+if not os.path.isfile(TEMPLATE_FILE) or not TEMPLATE_FILE.endswith('.txt'):
+    print("❌ Invalid template file. Exiting.")
+    exit()
+
+with open(TEMPLATE_FILE, 'r', encoding='utf-8') as f:
+    template = f.read()
+
+all_placeholders, unique_placeholders = extract_placeholders(template)
+print(f"\n✅ Found {len(all_placeholders)} placeholders (duplicates included).")
+print(f"Unique placeholders: {unique_placeholders}")
+
+# ----------------- Mode 2 Validation ----------------- #
+if mode == '2' and len(unique_placeholders) > 0:
+    print("❌ Template contains placeholders, but Bulk BCC mode does not support attributes.")
+    restart = input("Do you want to restart? (yes/no): ").strip().lower()
+    if restart == 'yes':
+        os.execv(sys.executable, ['python'] + sys.argv)
+    else:
+        print("❌ Exiting program.")
+        exit()
+
+# ----------------- STEP 3: CSV ----------------- #
+CSV_FILE = input("Enter full path of your CSV file: ").strip()
+if not os.path.isfile(CSV_FILE) or not CSV_FILE.endswith('.csv'):
+    print("❌ Invalid CSV file. Exiting.")
+    exit()
+
+df = pd.read_csv(CSV_FILE)
+
+if 'Email' not in df.columns:
+    print("❌ CSV must contain 'Email' column. Exiting.")
+    exit()
+
+# ----------------- STEP 3a: Handle Missing Placeholders ----------------- #
+for ph in unique_placeholders:
+    if ph not in df.columns:
+        print(f"⚠ Column '{ph}' not found in CSV.")
+        choice = input(f"Do you want to add '{ph}' as blank column? (yes/no): ").strip().lower()
+        if choice == 'yes':
+            df[ph] = ''
+            print(f"✅ Added blank column for '{ph}'")
+        else:
+            print(f"❌ Missing required column '{ph}'. Exiting.")
+            exit()
+
+# ----------------- STEP 3b: Extra Columns ----------------- #
+extra_cols = [col for col in df.columns if col not in unique_placeholders + ['Email', 'MissingFields']]
+if extra_cols:
+    print(f"ℹ️ Note: Your CSV has extra columns not used in template: {extra_cols}")
+
+# ----------------- STEP 4: Row Validation ----------------- #
+df['MissingFields'] = df.apply(lambda row: row_missing_fields(row, unique_placeholders), axis=1)
+df_valid = df[df['MissingFields'].apply(lambda x: len(x) == 0)]
+df_invalid = df[df['MissingFields'].apply(lambda x: len(x) > 0)]
+
+print(f"\n📊 CSV Validation Summary:")
+print(f"Total rows: {len(df)}")
+print(f"✅ Ready to send: {len(df_valid)}")
+print(f"⚠ Rows with issues: {len(df_invalid)}")
+
+if len(df_invalid) > 0:
+    print("\nPreview invalid rows:")
+    print(df_invalid[['Email', 'MissingFields']].head())
+    choice = input("\nDo you want to continue with only valid rows? (yes/no): ").strip().lower()
+    if choice != 'yes':
+        print("❌ Exiting. Please fix CSV and try again.")
+        exit()
+
+if len(df_valid) == 0:
+    print("❌ No valid rows to send. Exiting.")
+    exit()
+
+# ----------------- STEP 5: Final Draft Preview ----------------- #
+print("\n📧 Final Draft Preview (using first valid row):")
+first_row = df_valid.iloc[0].to_dict()
+preview_text = template
+for ph in unique_placeholders:
+    preview_text = preview_text.replace(f"<{ph}>", str(first_row[ph]))
+print("\n--- PREVIEW ---")
+print(preview_text)
+
+# ----------------- STEP 6: Test Email ----------------- #
+test_email = input("\nEnter a test email to preview (or leave blank to skip): ").strip()
+if test_email:
+    print("\n📧 Test Email Preview:")
+    print(preview_text)
+    confirm_test = input(f"Send this preview to {test_email}? (yes/no): ").strip().lower()
+    if confirm_test == 'yes':
+        try:
+            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+            server.starttls()
+            server.login(SENDER_EMAIL, PASSWORD)
+            msg = MIMEMultipart()
+            msg['From'] = SENDER_EMAIL
+            msg['To'] = test_email
+            msg['Subject'] = subject
+            msg.attach(MIMEText(preview_text, 'plain'))
+            server.send_message(msg)
+            print(f"✅ Test email sent to {test_email}")
+            server.quit()
+        except Exception as e:
+            print(f"❌ Test email failed: {e}")
+
+# ----------------- STEP 7: Confirm Sending ----------------- #
+print(f"\n⚠ You are about to send {len(df_valid)} emails.")
+confirm = input("Proceed? (yes/no): ").strip().lower()
+if confirm != 'yes':
+    print("❌ Cancelled.")
+    exit()
+
+# ----------------- STEP 8: Send Emails ----------------- #
+server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+server.starttls()
+server.login(SENDER_EMAIL, PASSWORD)
+
+status_list = []
+
+if mode == '1':
+    # Personalized
+    for _, row in df_valid.iterrows():
+        learner = row.to_dict()
+        email_addr = learner['Email']
+
+        body = template
+        for ph in unique_placeholders:
+            body = body.replace(f"<{ph}>", str(learner[ph]))
+
+        msg = MIMEMultipart()
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = email_addr
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+
+        try:
+            server.send_message(msg)
+            print(f"✅ Sent to {email_addr}")
+            status_list.append({'Email': email_addr, 'Status': 'Sent'})
+        except Exception as e:
+            print(f"❌ Failed for {email_addr}: {e}")
+            status_list.append({'Email': email_addr, 'Status': f'Failed ({e})'})
+
+        time.sleep(1)
+
+else:
+    # Bulk BCC
+    msg = MIMEMultipart()
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = SENDER_EMAIL
+    msg['Subject'] = subject
+    msg.attach(MIMEText(template, 'plain'))
+
+    bcc_list = df_valid['Email'].tolist()
+    try:
+        server.sendmail(SENDER_EMAIL, bcc_list, msg.as_string())
+        print(f"✅ Bulk email sent to {len(bcc_list)} learners.")
+        for e in bcc_list:
+            status_list.append({'Email': e, 'Status': 'Sent'})
+    except Exception as e:
+        print(f"❌ Bulk BCC failed: {e}")
+        for e in bcc_list:
+            status_list.append({'Email': e, 'Status': f'Failed ({e})'})
+
+server.quit()
+
+# ----------------- STEP 9: Save Report ----------------- #
+date_str = datetime.datetime.now().strftime("%d-%B-%Y")
+report_txt = f"{subject} - {date_str}.txt"
+
+with open(report_txt, "w", encoding="utf-8") as f:
+    f.write("--- EMAIL REPORT ---\n")
+    f.write(f"Subject: {subject}\n")
+    f.write(f"Date: {date_str}\n\n")
+    f.write(f"Total rows: {len(df)}\n")
+    f.write(f"✅ Sent: {len([s for s in status_list if s['Status']=='Sent'])}\n")
+    f.write(f"⚠ Failed: {len([s for s in status_list if s['Status'].startswith('Failed')])}\n")
+    f.write(f"🚫 Skipped (invalid): {len(df_invalid)}\n\n")
+    f.write("Detailed Status:\n")
+    for s in status_list:
+        f.write(f"{s['Email']} --> {s['Status']}\n")
+
+print("\n--- SUMMARY ---")
+print(f"Total rows: {len(df)}")
+print(f"✅ Sent: {len([s for s in status_list if s['Status']=='Sent'])}")
+print(f"⚠ Failed: {len([s for s in status_list if s['Status'].startswith('Failed')])}")
+print(f"🚫 Skipped (invalid): {len(df_invalid)}")
+print(f"📂 TXT Report saved: {report_txt}")
+
+
+
+
+
+cn ayou sine i wans to share thsi code cna doe cna you help sine i amnot fro the coding bagroudn by i wna ot expxin how the code in sienpe ashet lie wehsvs taksmeoyulok app apsas it is based 
+
+bla bal word 
+alos help what are Pavcsges instel tahst need to doen to rine to anotehr syste 
+ChatGPT said:
+
+Got it 👍 Let me break this into two parts for you:
+
+Simple Explanation (non-coding background friendly)
+
+What needs to be installed to run this code on another system
+
+1️⃣ Simple Explanation of the Code (like a task flow)
+
+Think of this script as a mini email-sending app.
+Here’s how it works step by step (like a workflow):
+
+Step 1: Start the Program
+It welcomes you and asks whether you want:
+
+Mode 1: Send personalized emails (each learner gets their own details filled in).
+
+Mode 2: Send bulk emails (same message to everyone in BCC).
+
+Step 2: Enter Details
+
+You give the email subject line.
+
+You give the template file (TXT) → this is your email body.
+
+If the template has placeholders like <Name> or <Course>, the script finds them.
+
+Step 3: Upload the Learners CSV
+
+You give the path to a CSV file containing learners’ emails (and other details like Name, Course, etc.).
+
+The script checks:
+
+If every row has a valid email.
+
+If all placeholders (like <Name>) exist in the CSV.
+
+If anything is missing, it shows you the problem.
+
+Step 4: Validation
+
+It separates valid rows (ready to send) and invalid rows (missing info).
+
+You can choose to continue only with valid rows.
+
+Step 5: Preview
+
+It shows you a sample email (using the first valid learner’s data).
+
+Step 6: Test Email (Optional)
+
+You can send the preview to your own email ID first to check formatting.
+
+Step 7: Confirm Sending
+
+It asks again before sending all emails (safety check).
+
+Step 8: Send Emails
+
+If personalized: sends one by one, replacing placeholders.
+
+If bulk BCC: sends one single email with all learners in BCC.
+
+Step 9: Report
+
+After sending, it creates a report file (.txt) with:
+
+Total sent
+
+Failed emails
+
+Skipped rows
+
+Status for each learner
+
+👉 In short: Upload template + upload CSV → Preview → Test → Confirm → Send → Get report.
